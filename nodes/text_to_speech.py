@@ -20,10 +20,11 @@ class TextToSpeech:
                 "group_id": ("STRING", {"multiline": False}),
                 "text": ("STRING", {"multiline": True}),
                 "model": (["speech-02-hd", "speech-02-turbo", "speech-01-hd", "speech-01-turbo"], {"default": "speech-02-hd"}),
-                "voice_id": (["Wise_Woman", "Friendly_Person", "Inspirational_girl", "Deep_Voice_Man", 
-                             "Calm_Woman", "Casual_Guy", "Lively_Girl", "Patient_Man", "Young_Knight",
-                             "Determined_Man", "Lovely_Girl", "Decent_Boy", "Imposing_Manner", 
-                             "Elegant_Man", "Abbess", "Sweet_Girl_2", "Exuberant_Girl"], {"default": "Wise_Woman"}),
+                "voice_id": ("STRING", {
+                    "multiline": False, 
+                    "default": "", 
+                    "placeholder": "Voice ID for text-to-speech"
+                }),
                 "speed": ("FLOAT", {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1}),
                 "volume": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1}),
                 "pitch": ("INT", {"default": 0, "min": -12, "max": 12, "step": 1}),
