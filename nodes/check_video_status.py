@@ -8,7 +8,7 @@ class CheckVideoStatus:
     MiniMax Check Video Generation Status node for ComfyUI
     """
     def __init__(self):
-        self.api_url = "https://api.minimax.chat/v1/query/video_generation"
+        self.api_base = "https://api.minimaxi.chat/v1/query/video_generation"
         
     @classmethod
     def INPUT_TYPES(cls):
@@ -29,27 +29,25 @@ class CheckVideoStatus:
             raise ValueError("API Key and Task ID must be provided")
 
         try:
-            # Prepare API request
+            # Build URL with task_id as query parameter (as per official API)
+            url = f"{self.api_base}?task_id={task_id}"
+            
+            # Prepare API request headers
             headers = {
                 'authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json'
-            }
-            
-            payload = {
-                "task_id": task_id
+                'content-type': 'application/json',
             }
             
             print(f"Checking status for task_id: {task_id}")
+            print(f"Request URL: {url}")
             
-            # Make API request
-            response = requests.post(
-                self.api_url,
-                headers=headers,
-                data=json.dumps(payload),
-                timeout=30
-            )
+            # Make API request using GET method (as per official API)
+            response = requests.get(url, headers=headers, timeout=30)
             
             print(f"Response status code: {response.status_code}")
+            
+            if response.status_code == 404:
+                raise RuntimeError("Video generation task not found. Please check your task_id.")
             
             try:
                 response_data = response.json()
@@ -63,7 +61,7 @@ class CheckVideoStatus:
             status_code = base_resp.get("status_code")
             status_msg = base_resp.get("status_msg", "Unknown error")
             
-            if status_code != 0:
+            if status_code is not None and status_code != 0:
                 error_messages = {
                     1002: "Rate limit exceeded, please try again later",
                     1004: "Authentication failed, please check your API key",
