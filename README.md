@@ -12,6 +12,12 @@ A collection of ComfyUI custom nodes that integrate with MiniMax API services.
 - **Voice Cloning**: Clone voices from audio samples
 - **Load Audio**: Load and preview audio files for voice cloning
 
+### Video Nodes (JM-MiniMax-API/Video)
+
+- **Video Generation**: Generate videos using MiniMax's unified video generation API (supports text-to-video, image-to-video, and subject-referenced video)
+- **Check Video Status**: Check the status of video generation tasks
+- **Download Video**: Download generated videos to local storage
+
 ## Installation
 
 1. Clone this repository to your ComfyUI custom_nodes folder:
@@ -98,6 +104,60 @@ This node uses MiniMax's API to convert text to speech.
 3. Connect the voice_id output to a **Text to Speech** node's custom_voice_id input
 4. Enter text and configure other parameters in the Text to Speech node
 5. Run the workflow to generate speech using the cloned voice
+
+### Video Generation Node
+
+This node uses MiniMax's unified video generation API to create videos from text prompts, images, or subject references.
+
+#### Input Parameters:
+- **api_key**: MiniMax API key
+- **model**: Video generation model selection:
+  - **T2V-01-Director**, **T2V-01**: Text-to-video models (require text prompt)
+  - **I2V-01-Director**, **I2V-01**, **I2V-01-live**: Image-to-video models (require image input)
+  - **S2V-01**: Subject-referenced video model
+- **prompt**: Video generation description (max 2000 characters, supports camera movement instructions)
+- **prompt_optimizer**: Whether to auto-optimize prompt for better quality (true/false)
+- **image** (optional): Image input for I2V models (required for I2V-01-Director, I2V-01, I2V-01-live)
+- **callback_url** (optional): URL for status update callbacks
+
+#### Model Usage Guidelines:
+- **Text-to-Video (T2V models)**: Only requires a text prompt. Image input is optional.
+- **Image-to-Video (I2V models)**: Requires both image input and optionally a text prompt. If prompt is empty, the model will auto-generate video content based on the image.
+- **Subject-Referenced (S2V models)**: Currently S2V-01 model for subject-referenced video generation.
+
+#### Camera Movement Instructions:
+When using T2V-01-Director or I2V-01-Director models, you can use movement instructions in the prompt:
+- Movement: [左移], [右移], [推进], [拉远], [上升], [下降]
+- Rotation: [左摇], [右摇], [上摇], [下摇]
+- Zoom: [变焦推近], [变焦拉远]
+- Other: [晃动], [跟随], [固定]
+
+#### Image Requirements (for I2V models):
+- Format: JPG/JPEG/PNG
+- Aspect ratio: between 2:5 and 5:2
+- Short side: minimum 300px
+- File size: maximum 20MB
+
+#### Output:
+- **task_id**: Task ID for the video generation job
+
+## Video Workflow Examples
+
+### Text-to-Video Workflow:
+1. Use **Video Generation** node with T2V-01-Director or T2V-01 model
+2. Enter your API key and write a detailed text prompt
+3. Run to get a task_id
+4. Use **Check Video Status** node to monitor progress
+5. Once status is "success", use **Download Video** node to save the video
+
+### Image-to-Video Workflow:
+1. Load an image into ComfyUI (using Load Image node)
+2. Connect it to the **Video Generation** node
+3. Select an I2V model (I2V-01-Director recommended)
+4. Enter API key and optionally write a prompt with movement instructions
+5. Run to get a task_id
+6. Use **Check Video Status** node to monitor progress
+7. Once status is "success", use **Download Video** node to save the video
 
 ## License
 
