@@ -11,7 +11,7 @@ class MiniMaxVideoGeneration:
     Supports text-to-video, image-to-video, and subject-referenced video generation
     """
     def __init__(self):
-        self.api_url = "https://api.minimax.chat/v1/video_generation"
+        self.api_url = "https://api.minimaxi.chat/v1/video_generation"
         
     @classmethod
     def INPUT_TYPES(cls):
