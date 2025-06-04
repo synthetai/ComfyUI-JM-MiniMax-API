@@ -156,9 +156,48 @@ When using T2V-01-Director or I2V-01-Director models, you can use movement instr
 3. Select an I2V model (I2V-01-Director recommended)
 4. Enter API key and optionally write a prompt with movement instructions
 5. Run to get a task_id
-6. Use **Check Video Status** node to monitor progress
-7. Once status is "success", use **Download Video** node to save the video
+6. Use **Check Video Status** node to monitor progress (it will automatically wait until completion)
+7. Once status is "success", use **Download Video** node with the file_id to save the video
 
 ## License
 
 MIT License
+
+### Check Video Status Node
+
+This node checks the status of video generation tasks and waits until completion.
+
+#### Input Parameters:
+- **api_key**: MiniMax API key
+- **task_id**: Task ID from Video Generation node
+- **check_interval**: Check interval in seconds (default: 30, range: 10-300)
+- **max_wait_time**: Maximum wait time in seconds (default: 1800/30 minutes, range: 5 minutes-2 hours)
+
+#### Output:
+- **status**: Task status (processing, success, failed)
+- **file_id**: File ID of the generated video (required for downloading)
+- **video_url**: Download URL for the generated video (may be empty)
+- **cover_image_url**: URL for the video cover image
+
+#### Features:
+- **Automatic polling**: Continuously checks status until completion or failure
+- **Progress tracking**: Shows elapsed time, remaining time, and attempt count
+- **Timeout protection**: Prevents infinite waiting with configurable maximum wait time
+- **Smart intervals**: Customizable check intervals to balance responsiveness and API usage
+
+### Download Video Node
+
+This node downloads generated videos using the file_id from the status check.
+
+#### Input Parameters:
+- **api_key**: MiniMax API key
+- **file_id**: File ID from Check Video Status node
+- **filename_prefix**: Prefix for the downloaded video file
+
+#### Output:
+- **video_path**: Absolute path to the downloaded video file
+
+#### Process:
+1. Uses file_id to retrieve download URL from MiniMax file API
+2. Downloads the video file with progress tracking
+3. Saves to ComfyUI output directory with timestamp

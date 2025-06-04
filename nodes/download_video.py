@@ -1,21 +1,23 @@
 import os
 import requests
 import time
+import json
 import folder_paths
 from urllib.parse import urlparse
 
 class DownloadVideo:
     """
-    Download Video from URL node for ComfyUI
+    Download Video using file_id from MiniMax API
     """
     def __init__(self):
-        pass
+        self.retrieve_api = "https://api.minimaxi.chat/v1/files/retrieve"
         
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "video_url": ("STRING", {"multiline": False, "placeholder": "Video URL from status check"}),
+                "api_key": ("STRING", {"multiline": False}),
+                "file_id": ("STRING", {"multiline": False, "placeholder": "File ID from video status check"}),
                 "filename_prefix": ("STRING", {"default": "minimax_video", "multiline": False}),
             }
         }
@@ -25,19 +27,69 @@ class DownloadVideo:
     FUNCTION = "download_video"
     CATEGORY = "JM-MiniMax-API/Video"
 
-    def download_video(self, video_url, filename_prefix):
-        if not video_url or not video_url.strip():
-            raise ValueError("Video URL must be provided")
+    def download_video(self, api_key, file_id, filename_prefix):
+        if not api_key or not file_id:
+            raise ValueError("API Key and File ID must be provided")
         
-        video_url = video_url.strip()
+        file_id = file_id.strip()
         
         try:
-            # Validate URL
-            parsed_url = urlparse(video_url)
-            if not parsed_url.scheme or not parsed_url.netloc:
-                raise ValueError("Invalid video URL provided")
+            print(f"Step 1: Retrieving download URL for file_id: {file_id}")
             
-            print(f"Downloading video from: {video_url}")
+            # Step 1: Get download URL using file_id
+            retrieve_url = f"{self.retrieve_api}?file_id={file_id}"
+            headers = {
+                'authorization': f'Bearer {api_key}',
+            }
+            
+            print(f"Retrieve URL: {retrieve_url}")
+            
+            response = requests.get(retrieve_url, headers=headers, timeout=30)
+            
+            print(f"Retrieve response status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                raise RuntimeError(f"Failed to retrieve file info. Status code: {response.status_code}")
+            
+            try:
+                retrieve_data = response.json()
+                print(f"Retrieve response data: {json.dumps(retrieve_data, indent=2)}")
+            except json.JSONDecodeError:
+                print(f"Raw retrieve response content: {response.content}")
+                raise RuntimeError("Failed to decode JSON response from file retrieve API")
+            
+            # Check for API errors
+            base_resp = retrieve_data.get("base_resp", {})
+            status_code = base_resp.get("status_code")
+            status_msg = base_resp.get("status_msg", "Unknown error")
+            
+            if status_code is not None and status_code != 0:
+                error_messages = {
+                    1002: "Rate limit exceeded, please try again later",
+                    1004: "Authentication failed, please check your API key",
+                    1008: "Insufficient account balance",
+                    2013: "Invalid parameters, please check your file_id",
+                    2049: "Invalid API key, please check your API key"
+                }
+                error_msg = error_messages.get(status_code, f"API Error {status_code}: {status_msg}")
+                raise RuntimeError(error_msg)
+            
+            # Extract download URL
+            file_info = retrieve_data.get("file", {})
+            download_url = file_info.get("download_url", "")
+            
+            if not download_url:
+                raise RuntimeError("No download URL found in API response")
+            
+            print(f"Download URL retrieved: {download_url}")
+            
+            # Step 2: Download the video file
+            print(f"Step 2: Downloading video from URL")
+            
+            # Validate download URL
+            parsed_url = urlparse(download_url)
+            if not parsed_url.scheme or not parsed_url.netloc:
+                raise ValueError("Invalid download URL received from API")
             
             # Create output directory
             output_dir = folder_paths.get_output_directory()
@@ -66,11 +118,13 @@ class DownloadVideo:
             video_filepath = os.path.join(output_dir, video_filename)
             
             # Download video with progress tracking
-            with requests.get(video_url, stream=True, timeout=60) as response:
-                response.raise_for_status()
+            print(f"Downloading to: {video_filepath}")
+            
+            with requests.get(download_url, stream=True, timeout=120) as download_response:
+                download_response.raise_for_status()
                 
                 # Get content length for progress tracking
-                content_length = response.headers.get('content-length')
+                content_length = download_response.headers.get('content-length')
                 if content_length:
                     total_size = int(content_length)
                     print(f"Video file size: {total_size / (1024*1024):.1f} MB")
@@ -80,7 +134,7 @@ class DownloadVideo:
                 
                 downloaded_size = 0
                 with open(video_filepath, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
+                    for chunk in download_response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
                             downloaded_size += len(chunk)
@@ -90,13 +144,15 @@ class DownloadVideo:
                                 progress = (downloaded_size / total_size) * 100
                                 print(f"Download progress: {progress:.1f}%")
             
-            print(f"Video downloaded successfully to: {video_filepath}")
-            print(f"Final file size: {os.path.getsize(video_filepath) / (1024*1024):.1f} MB")
+            final_size = os.path.getsize(video_filepath)
+            print(f"Video downloaded successfully!")
+            print(f"File path: {video_filepath}")
+            print(f"Final file size: {final_size / (1024*1024):.1f} MB")
             
             return (os.path.abspath(video_filepath),)
 
         except requests.exceptions.RequestException as e:
-            print(f"Download error: {str(e)}")
+            print(f"Request error: {str(e)}")
             raise RuntimeError(f"Failed to download video: {str(e)}")
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
