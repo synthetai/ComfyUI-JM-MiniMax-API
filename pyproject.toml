@@ -1,0 +1,16 @@
+[project]
+name = "jm-minimax-api"
+description = "A collection of ComfyUI custom nodes that integrate with MiniMax API services."
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["requests>=2.31.0", "Pillow>=8.0.0"]
+
+[project.urls]
+Repository = "https://github.com/synthetai/ComfyUI-JM-MiniMax-API"
+#  Used by Comfy Registry https://registry.comfy.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-JM-MiniMax-API"
+Icon = ""
+includes = []
