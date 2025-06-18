@@ -18,7 +18,7 @@ class MiniMaxVideoGeneration:
         return {
             "required": {
                 "api_key": ("STRING", {"multiline": False}),
-                "model": (["T2V-01-Director", "T2V-01", "I2V-01-Director", "I2V-01", "I2V-01-live", "S2V-01"], {
+                "model": (["T2V-01-Director", "T2V-01", "I2V-01-Director", "I2V-01", "I2V-01-live", "S2V-01", "MiniMax-Hailuo-02"], {
                     "default": "I2V-01-Director"
                 }),
                 "prompt": ("STRING", {
@@ -30,7 +30,15 @@ class MiniMaxVideoGeneration:
             },
             "optional": {
                 "image": ("IMAGE", {
-                    "tooltip": "Required for I2V models (I2V-01-Director, I2V-01, I2V-01-live). Optional for other models."
+                    "tooltip": "Required for I2V models (I2V-01-Director, I2V-01, I2V-01-live). Optional for MiniMax-Hailuo-02 and other models."
+                }),
+                "duration": (["6", "10"], {
+                    "default": "6",
+                    "tooltip": "Video duration in seconds. 01 series: only 6s. MiniMax-Hailuo-02: 6s or 10s (10s only available for 768P resolution)."
+                }),
+                "resolution": (["768P", "1080P"], {
+                    "default": "768P", 
+                    "tooltip": "Video resolution. Only applicable to MiniMax-Hailuo-02 model. 01 series uses fixed resolution."
                 }),
                 "callback_url": ("STRING", {
                     "multiline": False, 
@@ -45,7 +53,7 @@ class MiniMaxVideoGeneration:
     FUNCTION = "generate_video"
     CATEGORY = "JM-MiniMax-API/Video"
 
-    def generate_video(self, api_key, model, prompt, prompt_optimizer, image=None, callback_url=""):
+    def generate_video(self, api_key, model, prompt, prompt_optimizer, image=None, duration="6", resolution="768P", callback_url=""):
         if not api_key:
             raise ValueError("API Key must be provided")
 
@@ -53,12 +61,24 @@ class MiniMaxVideoGeneration:
         i2v_models = ["I2V-01-Director", "I2V-01", "I2V-01-live"]
         t2v_models = ["T2V-01-Director", "T2V-01"]
         s2v_models = ["S2V-01"]
+        hailuo_models = ["MiniMax-Hailuo-02"]
         
+        # Validate model-specific requirements
         if model in i2v_models and image is None:
             raise ValueError(f"Model {model} requires an image input. Please connect an image to the 'image' input.")
         
         if model in t2v_models and not prompt.strip():
             raise ValueError(f"Model {model} requires a text prompt. Please provide a description in the 'prompt' field.")
+
+        # Validate duration and resolution combinations for MiniMax-Hailuo-02
+        if model in hailuo_models:
+            duration_int = int(duration)
+            if duration_int == 10 and resolution == "1080P":
+                raise ValueError("MiniMax-Hailuo-02 model does not support 10s duration with 1080P resolution. Please use 768P for 10s duration or 6s for 1080P.")
+        
+        # Validate duration for 01 series models
+        if model not in hailuo_models and duration != "6":
+            print(f"Warning: Duration parameter is not applicable to {model}. Using default 6s duration.")
 
         try:
             # Prepare API request
@@ -74,8 +94,13 @@ class MiniMaxVideoGeneration:
                 "prompt_optimizer": prompt_optimizer
             }
             
-            # Handle image input for I2V models
-            if model in i2v_models and image is not None:
+            # Add duration and resolution for MiniMax-Hailuo-02
+            if model in hailuo_models:
+                payload["duration"] = int(duration)
+                payload["resolution"] = resolution
+            
+            # Handle image input for I2V models and MiniMax-Hailuo-02
+            if (model in i2v_models and image is not None) or (model in hailuo_models and image is not None):
                 # Convert ComfyUI image tensor to PIL Image
                 if len(image.shape) == 4:  # Batch dimension
                     # Take the first image from batch
@@ -145,6 +170,9 @@ class MiniMaxVideoGeneration:
             print(f"Model: {model}")
             print(f"Prompt: {prompt}")
             print(f"Prompt optimizer: {prompt_optimizer}")
+            if model in hailuo_models:
+                print(f"Duration: {duration}s")
+                print(f"Resolution: {resolution}")
             if callback_url:
                 print(f"Callback URL: {callback_url}")
             
