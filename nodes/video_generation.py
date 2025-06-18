@@ -207,7 +207,13 @@ class MiniMaxVideoGeneration:
                     2013: "Invalid parameters, please check your input",
                     2049: "Invalid API key, please check your API key"
                 }
-                error_msg = error_messages.get(status_code, f"API Error {status_code}: {status_msg}")
+                
+                # Special handling for group_id access issues
+                if status_code == 2013 and "group_id can not access video 02" in status_msg:
+                    error_msg = "Your API key/account does not have access to MiniMax-Hailuo-02 model. Please check your account permissions or contact MiniMax support to enable access to the 02 series models."
+                else:
+                    error_msg = error_messages.get(status_code, f"API Error {status_code}: {status_msg}")
+                
                 raise RuntimeError(error_msg)
             
             # Extract task_id
