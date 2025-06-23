@@ -10,6 +10,7 @@ A collection of ComfyUI custom nodes that integrate with MiniMax API services.
 
 - **Text to Speech**: Convert text to natural-sounding speech using MiniMax's advanced text-to-speech API
 - **Voice Cloning**: Clone voices from audio samples
+- **Voice Design**: Generate custom voices from text descriptions using AI-powered voice design
 - **Load Audio**: Load and preview audio files for voice cloning
 
 ### Video Nodes (JM-MiniMax-API/Video)
@@ -64,6 +65,33 @@ This node uses MiniMax's voice cloning API to clone voices from audio samples.
 #### Output:
 - **voice_id**: ID of the cloned voice (can be connected to TextToSpeech node)
 
+### Voice Design Node
+
+This node uses MiniMax's voice design API to generate custom voices from text descriptions. Simply describe the voice characteristics you want, and the AI will create a unique voice for you.
+
+#### Input Parameters:
+- **api_key**: MiniMax API key
+- **prompt**: Detailed description of the desired voice characteristics
+  - Example: "讲述悬疑故事的播音员，声音低沉富有磁性，语速时快时慢，营造紧张神秘的氛围。"
+  - Include: gender, age, emotion, speaking style, tone, usage scenario, etc.
+- **preview_text**: Optional text for voice preview (max 200 characters)
+  - Example: "夜深了，古屋里只有他一人。窗外传来若有若无的脚步声..."
+
+#### Output:
+- **voice_id**: Generated custom voice ID (can be used in Text to Speech node)
+- **trial_audio**: Path to preview audio file (if generated)
+
+#### Usage Tips:
+1. **Be Specific**: Describe gender, age, emotion, speaking style in detail
+2. **Include Context**: Mention the usage scenario (narrator, customer service, etc.)
+3. **Voice Characteristics**: Specify tone (deep, bright), pace (fast, slow), style (formal, casual)
+4. **Preview**: Use preview_text to test the generated voice
+
+#### Example Prompts:
+- "专业新闻主播，女性，30岁左右，声音清晰标准，语调平稳，适合播报新闻"
+- "儿童故事讲述者，温和亲切的女声，语速适中，充满关爱和耐心"
+- "商务客服代表，男性，声音稳重专业，语调友好，适合电话客服"
+
 ### Text to Speech Node
 
 This node uses MiniMax's API to convert text to speech.
@@ -97,13 +125,26 @@ This node uses MiniMax's API to convert text to speech.
    - Filename format: prefix_subtitle_YYYYMMDD-HHMMSS.json
    - Contains sentence-level timestamps accurate to milliseconds
 
-## Workflow Example
+## Workflow Examples
 
+### Basic Text-to-Speech Workflow:
+1. Use **Text to Speech** node with a predefined voice
+2. Enter your API key, text, and configure voice parameters
+3. Run to generate speech audio
+
+### Voice Cloning Workflow:
 1. Use **Load Audio** node to upload or select an audio file
 2. Connect the output to a **Voice Cloning** node to clone the voice
 3. Connect the voice_id output to a **Text to Speech** node's custom_voice_id input
 4. Enter text and configure other parameters in the Text to Speech node
 5. Run the workflow to generate speech using the cloned voice
+
+### Voice Design Workflow:
+1. Use **Voice Design** node to create a custom voice from description
+2. Write a detailed prompt describing the voice characteristics you want
+3. Optionally add preview text to test the voice
+4. Run to get a custom voice_id and preview audio
+5. Connect the voice_id to a **Text to Speech** node to use the custom voice
 
 ### Video Generation Node
 
