@@ -76,16 +76,25 @@ This node uses MiniMax's voice design API to generate custom voices from text de
   - Include: gender, age, emotion, speaking style, tone, usage scenario, etc.
 - **preview_text**: Optional text for voice preview (max 200 characters)
   - Example: "夜深了，古屋里只有他一人。窗外传来若有若无的脚步声..."
+- **custom_voice_id** (optional): Custom voice ID for the generated voice
+  - If empty, a unique voice ID will be automatically generated
+  - Format: Can be any string identifier you prefer
 
 #### Output:
-- **voice_id**: Generated custom voice ID (can be used in Text to Speech node)
+- **voice_id**: Generated or custom voice ID (can be used in Text to Speech node)
 - **trial_audio**: Path to preview audio file (if generated)
+
+#### Voice ID Generation:
+- **Custom ID**: If you provide a custom_voice_id, it will be used as-is
+- **Auto-generated**: If left empty, format will be `voice_{timestamp}_{unique_id}`
+- **Example auto-generated**: `voice_1704067200_a1b2c3d4`
 
 #### Usage Tips:
 1. **Be Specific**: Describe gender, age, emotion, speaking style in detail
 2. **Include Context**: Mention the usage scenario (narrator, customer service, etc.)
 3. **Voice Characteristics**: Specify tone (deep, bright), pace (fast, slow), style (formal, casual)
 4. **Preview**: Use preview_text to test the generated voice
+5. **Custom ID**: Use meaningful custom_voice_id for easier management
 
 #### Example Prompts:
 - "专业新闻主播，女性，30岁左右，声音清晰标准，语调平稳，适合播报新闻"

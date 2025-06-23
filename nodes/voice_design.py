@@ -26,6 +26,13 @@ class VoiceDesign:
                     "default": "夜深了，古屋里只有他一人。窗外传来若有若无的脚步声，他屏住呼吸，慢慢地，慢慢地，走向那扇吱呀作响的门……",
                     "placeholder": "用于试听的文本内容（可选，不超过200字）"
                 }),
+            },
+            "optional": {
+                "custom_voice_id": ("STRING", {
+                    "multiline": False,
+                    "default": "",
+                    "placeholder": "自定义音色ID（可选）。如果为空，将自动生成唯一ID"
+                }),
             }
         }
 
@@ -34,7 +41,7 @@ class VoiceDesign:
     FUNCTION = "design_voice"
     CATEGORY = "JM-MiniMax-API/Speech"
 
-    def design_voice(self, api_key, prompt, preview_text):
+    def design_voice(self, api_key, prompt, preview_text, custom_voice_id=""):
         if not api_key:
             raise ValueError("API Key must be provided")
         
@@ -46,9 +53,23 @@ class VoiceDesign:
             "Authorization": f"Bearer {api_key}",
         }
 
+        # 生成或使用自定义voice_id
+        if custom_voice_id and custom_voice_id.strip():
+            voice_id = custom_voice_id.strip()
+            print(f"🎯 使用自定义音色ID: {voice_id}")
+        else:
+            # 自动生成唯一的voice_id
+            import uuid
+            import time
+            timestamp = int(time.time())
+            unique_id = str(uuid.uuid4()).replace('-', '')[:8]
+            voice_id = f"voice_{timestamp}_{unique_id}"
+            print(f"🔄 自动生成音色ID: {voice_id}")
+
         # 构建请求数据
         payload = {
-            "prompt": prompt.strip()
+            "prompt": prompt.strip(),
+            "voice_id": voice_id
         }
         
         # 如果提供了预览文本，则添加到请求中
@@ -84,12 +105,18 @@ class VoiceDesign:
                 if status_code is not None and status_code != 0:
                     raise RuntimeError(f"API错误 {status_code}: {status_msg}")
             
-            # 获取生成的音色ID
-            voice_id = resp_data.get("voice_id")
-            if not voice_id:
-                raise RuntimeError("API未返回音色ID")
+            # 检查API返回的音色ID（应该与我们发送的一致）
+            returned_voice_id = resp_data.get("voice_id")
+            if returned_voice_id:
+                print(f"✅ API确认音色ID: {returned_voice_id}")
+                # 使用API返回的voice_id（可能与发送的稍有不同）
+                final_voice_id = returned_voice_id
+            else:
+                # 如果API没有返回voice_id，使用我们发送的
+                print(f"ℹ️ API未返回voice_id，使用发送的ID")
+                final_voice_id = voice_id
             
-            print(f"✅ 音色生成成功！音色ID: {voice_id}")
+            print(f"✅ 音色生成成功！最终音色ID: {final_voice_id}")
             
             # 处理试听音频（如果有）
             trial_audio_path = ""
@@ -105,7 +132,7 @@ class VoiceDesign:
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
                 
                 # 保存试听音频文件
-                trial_filename = f"voice_design_trial_{voice_id}_{timestamp}.wav"
+                trial_filename = f"voice_design_trial_{final_voice_id}_{timestamp}.wav"
                 trial_filepath = os.path.join(output_dir, trial_filename)
                 
                 try:
@@ -130,7 +157,7 @@ class VoiceDesign:
                     print(f"⚠️ 保存试听音频时出错: {str(audio_error)}")
                     # 不要因为试听音频保存失败而中断整个流程
             
-            return (voice_id, trial_audio_path)
+            return (final_voice_id, trial_audio_path)
 
         except requests.exceptions.RequestException as e:
             print(f"❌ 网络请求错误: {str(e)}")
