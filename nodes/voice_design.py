@@ -9,7 +9,7 @@ class VoiceDesign:
     MiniMax Voice Design node for ComfyUI - Generate custom voices from text descriptions
     """
     def __init__(self):
-        self.api_base = "https://api.minimaxi.com/v1/voice_design"
+        self.api_base = "https://api.minimax.io/v1/voice_design"
         
     @classmethod
     def INPUT_TYPES(cls):
