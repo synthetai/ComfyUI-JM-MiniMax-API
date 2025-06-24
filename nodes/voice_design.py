@@ -60,10 +60,9 @@ class VoiceDesign:
         else:
             # 自动生成唯一的voice_id
             import uuid
-            import time
-            timestamp = int(time.time())
+            current_timestamp = int(time.time())
             unique_id = str(uuid.uuid4()).replace('-', '')[:8]
-            voice_id = f"voice_{timestamp}_{unique_id}"
+            voice_id = f"voice_{current_timestamp}_{unique_id}"
             print(f"🔄 自动生成音色ID: {voice_id}")
 
         # 构建请求数据
