@@ -11,6 +11,45 @@ class VoiceDesign:
     def __init__(self):
         self.api_base = "https://api.minimax.io/v1/voice_design"
         
+    def _detect_audio_format(self, audio_data):
+        """
+        检测音频数据的格式
+        通过文件头部的魔术字节来识别音频格式
+        """
+        if not audio_data or len(audio_data) < 12:
+            return "bin"  # 数据不足，使用通用二进制扩展名
+        
+        # 检查常见音频格式的文件头
+        header = audio_data[:12]
+        
+        # WAV 格式: RIFF....WAVE
+        if header.startswith(b'RIFF') and header[8:12] == b'WAVE':
+            return "wav"
+        
+        # MP3 格式: ID3 标签或 MPEG 帧头
+        if header.startswith(b'ID3') or header.startswith(b'\xff\xfb'):
+            return "mp3"
+        
+        # FLAC 格式: fLaC
+        if header.startswith(b'fLaC'):
+            return "flac"
+        
+        # OGG 格式: OggS
+        if header.startswith(b'OggS'):
+            return "ogg"
+        
+        # AAC 格式: ADTS 头部
+        if len(audio_data) >= 2 and (audio_data[0] == 0xff and (audio_data[1] & 0xf0) == 0xf0):
+            return "aac"
+        
+        # M4A/MP4 格式: ftyp
+        if b'ftyp' in header[:8]:
+            return "m4a"
+        
+        # 默认返回wav（最常见的格式）
+        print("⚠️ 无法识别音频格式，默认使用wav")
+        return "wav"
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -130,24 +169,36 @@ class VoiceDesign:
                 # 生成时间戳
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
                 
-                # 保存试听音频文件
-                trial_filename = f"voice_design_trial_{final_voice_id}_{timestamp}.wav"
-                trial_filepath = os.path.join(output_dir, trial_filename)
-                
                 try:
-                    # 如果trial_audio是URL，下载文件
+                    # 根据官方文档，trial_audio是hex编码的音频数据
                     if trial_audio.startswith("http"):
+                        # 如果是URL，下载文件
                         print(f"📥 下载试听音频: {trial_audio}")
                         audio_response = requests.get(trial_audio)
                         audio_response.raise_for_status()
-                        with open(trial_filepath, "wb") as f:
-                            f.write(audio_response.content)
+                        audio_data = audio_response.content
                     else:
-                        # 如果是base64编码的音频数据
-                        import base64
-                        audio_data = base64.b64decode(trial_audio)
-                        with open(trial_filepath, "wb") as f:
-                            f.write(audio_data)
+                        # hex编码的音频数据，需要解码
+                        print(f"🔓 解码hex编码的音频数据")
+                        try:
+                            audio_data = bytes.fromhex(trial_audio)
+                        except ValueError as hex_error:
+                            print(f"⚠️ hex解码失败，尝试base64解码: {hex_error}")
+                            # 兼容性处理：如果hex解码失败，尝试base64
+                            import base64
+                            audio_data = base64.b64decode(trial_audio)
+                    
+                    # 检测音频格式
+                    audio_format = self._detect_audio_format(audio_data)
+                    print(f"🎼 检测到音频格式: {audio_format}")
+                    
+                    # 根据检测到的格式设置文件扩展名
+                    trial_filename = f"voice_design_trial_{final_voice_id}_{timestamp}.{audio_format}"
+                    trial_filepath = os.path.join(output_dir, trial_filename)
+                    
+                    # 保存音频文件
+                    with open(trial_filepath, "wb") as f:
+                        f.write(audio_data)
                     
                     trial_audio_path = os.path.abspath(trial_filepath)
                     print(f"💾 试听音频保存至: {trial_audio_path}")
