@@ -29,7 +29,7 @@ class TextToSpeech:
                 "volume": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1}),
                 "pitch": ("INT", {"default": 0, "min": -12, "max": 12, "step": 1}),
                 "emotion": (["", "happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"], {"default": ""}),
-fi                "subtitle_enable": ("BOOLEAN", {"default": False}),
+                "subtitle_enable": ("BOOLEAN", {"default": False}),
                 "filename_prefix": ("STRING", {"default": "tts_output", "multiline": False}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "step": 1}),
             },
