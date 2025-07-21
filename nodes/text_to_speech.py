@@ -28,7 +28,7 @@ class TextToSpeech:
                 "speed": ("FLOAT", {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.1}),
                 "volume": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1}),
                 "pitch": ("INT", {"default": 0, "min": -12, "max": 12, "step": 1}),
-                "emotion": (["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"], {"default": "neutral"}),
+                "emotion": (["", "happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"], {"default": ""}),
                 "subtitle_enable": ("BOOLEAN", {"default": False}),
                 "filename_prefix": ("STRING", {"default": "tts_output", "multiline": False}),
             },
@@ -65,16 +65,25 @@ class TextToSpeech:
         selected_voice_id = custom_voice_id if custom_voice_id else voice_id
         print(f"Using voice_id: {selected_voice_id} {'(custom)' if custom_voice_id else '(predefined)'}")
 
+        # Build voice_setting
+        voice_setting = {
+            "voice_id": selected_voice_id,
+            "speed": speed,
+            "vol": volume,
+            "pitch": pitch
+        }
+        
+        # Only add emotion if it's not empty
+        if emotion and emotion.strip():
+            voice_setting["emotion"] = emotion
+            print(f"Adding emotion parameter: {emotion}")
+        else:
+            print("Emotion parameter not provided, using default voice emotion")
+
         payload = {
             "model": model,
             "text": text,
-            "voice_setting": {
-                "voice_id": selected_voice_id,
-                "speed": speed,
-                "vol": volume,
-                "pitch": pitch,
-                "emotion": emotion
-            },
+            "voice_setting": voice_setting,
             "language_boost": language_boost,
             "audio_setting": {
                 "sample_rate": 32000,
