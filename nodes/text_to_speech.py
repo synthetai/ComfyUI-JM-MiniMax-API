@@ -29,9 +29,9 @@ class TextToSpeech:
                 "volume": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1}),
                 "pitch": ("INT", {"default": 0, "min": -12, "max": 12, "step": 1}),
                 "emotion": (["", "happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"], {"default": ""}),
-                "subtitle_enable": ("BOOLEAN", {"default": False}),
+fi                "subtitle_enable": ("BOOLEAN", {"default": False}),
                 "filename_prefix": ("STRING", {"default": "tts_output", "multiline": False}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "step": 1}),
             },
             "optional": {
                 "custom_voice_id": ("STRING", {
@@ -54,6 +54,16 @@ class TextToSpeech:
     def generate_speech(self, api_key, group_id, text, model, voice_id, speed, volume, pitch, emotion, subtitle_enable, filename_prefix, seed, custom_voice_id="", language_boost="auto"):
         if not api_key or not group_id:
             raise ValueError("API Key and Group ID must be provided")
+        
+        # Handle seed parameter type conversion and validation
+        try:
+            if seed is None or seed == "" or seed == "":
+                seed = 0  # Default to 0 for random seed
+            else:
+                seed = int(seed)  # Ensure it's an integer
+        except (ValueError, TypeError):
+            print(f"⚠️ 无效的seed值: {seed}，使用默认值 0")
+            seed = 0
         
         # Log seed for execution tracking (seed is not sent to API, just for ComfyUI execution control)
         print(f"🎲 执行种子 (Seed): {seed}")
