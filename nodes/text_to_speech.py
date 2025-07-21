@@ -31,6 +31,7 @@ class TextToSpeech:
                 "emotion": (["", "happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"], {"default": ""}),
                 "subtitle_enable": ("BOOLEAN", {"default": False}),
                 "filename_prefix": ("STRING", {"default": "tts_output", "multiline": False}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
             "optional": {
                 "custom_voice_id": ("STRING", {
@@ -50,9 +51,21 @@ class TextToSpeech:
     FUNCTION = "generate_speech"
     CATEGORY = "JM-MiniMax-API/Speech"
 
-    def generate_speech(self, api_key, group_id, text, model, voice_id, speed, volume, pitch, emotion, subtitle_enable, filename_prefix, custom_voice_id="", language_boost="auto"):
+    def generate_speech(self, api_key, group_id, text, model, voice_id, speed, volume, pitch, emotion, subtitle_enable, filename_prefix, seed, custom_voice_id="", language_boost="auto"):
         if not api_key or not group_id:
             raise ValueError("API Key and Group ID must be provided")
+        
+        # Log seed for execution tracking (seed is not sent to API, just for ComfyUI execution control)
+        print(f"🎲 执行种子 (Seed): {seed}")
+        
+        # Generate random seed if seed is 0
+        if seed == 0:
+            import random
+            actual_seed = random.randint(1, 0xffffffffffffffff)
+            print(f"🎯 自动生成随机种子: {actual_seed}")
+        else:
+            actual_seed = seed
+            print(f"🎯 使用指定种子: {actual_seed}")
 
         url = f"{self.api_base}?GroupId={group_id}"
         headers = {
