@@ -4,6 +4,7 @@ import time
 import binascii
 import requests
 import folder_paths
+import urllib.parse
 
 class TextToSpeech:
     """
@@ -43,6 +44,10 @@ class TextToSpeech:
                                   "French", "Portuguese", "German", "Turkish", "Dutch", "Ukrainian", "Vietnamese", 
                                   "Indonesian", "Japanese", "Italian", "Korean", "Thai", "Polish", "Romanian", 
                                   "Greek", "Czech", "Finnish", "Hindi"], {"default": "auto"}),
+                "output_format": (["hex", "url"], {
+                    "default": "hex", 
+                    "tooltip": "hex: 返回十六进制编码的音频数据; url: 返回音频下载链接(有效期24小时)"
+                }),
             }
         }
 
@@ -51,7 +56,7 @@ class TextToSpeech:
     FUNCTION = "generate_speech"
     CATEGORY = "JM-MiniMax-API/Speech"
 
-    def generate_speech(self, api_key, group_id, text, model, voice_id, speed, volume, pitch, emotion, subtitle_enable, filename_prefix, seed, custom_voice_id="", language_boost="auto"):
+    def generate_speech(self, api_key, group_id, text, model, voice_id, speed, volume, pitch, emotion, subtitle_enable, filename_prefix, seed, custom_voice_id="", language_boost="auto", output_format="hex"):
         if not api_key or not group_id:
             raise ValueError("API Key and Group ID must be provided")
         
@@ -115,11 +120,12 @@ class TextToSpeech:
                 "channel": 1
             },
             "subtitle_enable": subtitle_enable,
-            "output_format": "hex"
+            "output_format": output_format
         }
 
         try:
             print(f"Sending request to {url}")
+            print(f"Output format: {output_format}")
             print(f"Headers: {json.dumps(headers, indent=2)}")
             print(f"Payload: {json.dumps(payload, indent=2)}")
             
@@ -146,15 +152,6 @@ class TextToSpeech:
             if not data:
                 print(f"Full response: {json.dumps(resp_data, indent=2)}")
                 raise RuntimeError("No data returned from API")
-                
-            # Convert hex to binary
-            audio_hex = data.get("audio", "")
-            if not audio_hex:
-                raise RuntimeError("No audio data returned")
-            
-            print(f"Received audio hex data length: {len(audio_hex)}")
-            audio_data = binascii.unhexlify(audio_hex)
-            print(f"Decoded audio data length: {len(audio_data)}")
             
             # Create output directory
             output_dir = folder_paths.get_output_directory()
@@ -168,12 +165,42 @@ class TextToSpeech:
             if not clean_prefix:
                 clean_prefix = "tts_output"
             
-            # Save audio file
+            # Process audio based on output format
             audio_filename = f"{clean_prefix}_{timestamp}.mp3"
             audio_filepath = os.path.join(output_dir, audio_filename)
-            with open(audio_filepath, "wb") as f:
-                f.write(audio_data)
-            print(f"Saved audio file to: {audio_filepath}")
+            
+            if output_format == "url":
+                # Handle URL format response
+                audio_url = data.get("audio", "")
+                if not audio_url:
+                    raise RuntimeError("No audio URL returned")
+                
+                # Decode Unicode escapes in the URL (\u0026 -> &)
+                audio_url = audio_url.encode().decode('unicode_escape')
+                print(f"Audio download URL: {audio_url}")
+                
+                # Download audio from URL
+                print(f"Downloading audio from URL...")
+                audio_response = requests.get(audio_url)
+                audio_response.raise_for_status()
+                
+                with open(audio_filepath, "wb") as f:
+                    f.write(audio_response.content)
+                print(f"Downloaded and saved audio file to: {audio_filepath}")
+                
+            else:
+                # Handle hex format response (original logic)
+                audio_hex = data.get("audio", "")
+                if not audio_hex:
+                    raise RuntimeError("No audio data returned")
+                
+                print(f"Received audio hex data length: {len(audio_hex)}")
+                audio_data = binascii.unhexlify(audio_hex)
+                print(f"Decoded audio data length: {len(audio_data)}")
+                
+                with open(audio_filepath, "wb") as f:
+                    f.write(audio_data)
+                print(f"Saved audio file to: {audio_filepath}")
             
             # Save subtitle file if available
             subtitle_filepath = ""
