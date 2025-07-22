@@ -51,8 +51,8 @@ class TextToSpeech:
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("audio_path", "subtitle_path")
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("audio_path", "subtitle_path", "audio_url")
     FUNCTION = "generate_speech"
     CATEGORY = "JM-MiniMax-API/Speech"
 
@@ -168,6 +168,7 @@ class TextToSpeech:
             # Process audio based on output format
             audio_filename = f"{clean_prefix}_{timestamp}.mp3"
             audio_filepath = os.path.join(output_dir, audio_filename)
+            processed_audio_url = ""  # Initialize audio_url variable
             
             if output_format == "url":
                 # Handle URL format response
@@ -176,12 +177,12 @@ class TextToSpeech:
                     raise RuntimeError("No audio URL returned")
                 
                 # Decode Unicode escapes in the URL (\u0026 -> &)
-                audio_url = audio_url.encode().decode('unicode_escape')
-                print(f"Audio download URL: {audio_url}")
+                processed_audio_url = audio_url.encode().decode('unicode_escape')
+                print(f"Audio download URL: {processed_audio_url}")
                 
                 # Download audio from URL
                 print(f"Downloading audio from URL...")
-                audio_response = requests.get(audio_url)
+                audio_response = requests.get(processed_audio_url)
                 audio_response.raise_for_status()
                 
                 with open(audio_filepath, "wb") as f:
@@ -215,7 +216,8 @@ class TextToSpeech:
             
             return (
                 os.path.abspath(audio_filepath),
-                os.path.abspath(subtitle_filepath) if subtitle_filepath else ""
+                os.path.abspath(subtitle_filepath) if subtitle_filepath else "",
+                processed_audio_url
             )
 
         except requests.exceptions.RequestException as e:
