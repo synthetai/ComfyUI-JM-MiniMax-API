@@ -9,6 +9,11 @@ class MiniMaxVideoGeneration:
     """
     MiniMax Video Generation node for ComfyUI
     Supports text-to-video, image-to-video, and subject-referenced video generation
+    
+    Usage modes:
+    - Text-to-video: Provide only prompt (no images)
+    - Image-to-video: Provide first_frame_image and/or last_frame_image
+    - Subject-referenced: Use S2V-01 model with subject_reference (future support)
     """
     def __init__(self):
         self.api_url = "https://api.minimaxi.chat/v1/video_generation"
@@ -19,21 +24,21 @@ class MiniMaxVideoGeneration:
             "required": {
                 "api_key": ("STRING", {"multiline": False}),
                 "model": (["T2V-01-Director", "T2V-01", "I2V-01-Director", "I2V-01", "I2V-01-live", "S2V-01", "MiniMax-Hailuo-02"], {
-                    "default": "I2V-01-Director"
+                    "default": "MiniMax-Hailuo-02"
                 }),
                 "prompt": ("STRING", {
                     "multiline": True, 
                     "default": "",
-                    "placeholder": "Describe the video generation (max 2000 characters). Leave empty for I2V models if you want auto-generation."
+                    "placeholder": "Describe the video generation (max 2000 characters). For text-to-video: provide prompt only (no images). For image-to-video: can be empty for auto-generation."
                 }),
                 "prompt_optimizer": ("BOOLEAN", {"default": True}),
             },
             "optional": {
                 "first_frame_image": ("IMAGE", {
-                    "tooltip": "Required for I2V models (I2V-01-Director, I2V-01, I2V-01-live) and MiniMax-Hailuo-02 with 512P resolution. Optional for other cases."
+                    "tooltip": "For text-to-video: leave empty. For image-to-video: required for I2V models, optional for others. MiniMax-Hailuo-02 with 512P in I2V mode requires this."
                 }),
                 "last_frame_image": ("IMAGE", {
-                    "tooltip": "Only supported by MiniMax-Hailuo-02 model. Model will generate video ending with this frame. Not supported with 512P resolution."
+                    "tooltip": "Only supported by MiniMax-Hailuo-02 model. Model will generate video ending with this frame. Not supported with 512P resolution. Leave empty for text-to-video."
                 }),
                 "duration": (["6", "10"], {
                     "default": "6",
@@ -66,11 +71,26 @@ class MiniMaxVideoGeneration:
         s2v_models = ["S2V-01"]
         hailuo_models = ["MiniMax-Hailuo-02"]
         
-        # Validate model-specific requirements
-        if model in i2v_models and first_frame_image is None:
-            raise ValueError(f"Model {model} requires a first frame image input. Please connect an image to the 'first_frame_image' input.")
+        # Determine if this is text-to-video or image-to-video mode
+        has_first_frame = first_frame_image is not None
+        has_last_frame = last_frame_image is not None
+        has_prompt = prompt.strip() != ""
         
-        if model in t2v_models and not prompt.strip():
+        # Mode detection
+        if not has_first_frame and not has_last_frame and has_prompt:
+            video_mode = "text-to-video"
+        elif has_first_frame or has_last_frame:
+            video_mode = "image-to-video"
+        else:
+            raise ValueError("Please provide either a text prompt (for text-to-video) or at least one image (for image-to-video).")
+        
+        print(f"📹 Video generation mode: {video_mode}")
+        
+        # Validate model-specific requirements
+        if model in i2v_models and not has_first_frame:
+            raise ValueError(f"Model {model} requires a first frame image input. Please connect an image to the 'first_frame_image' input, or use a T2V model for text-to-video generation.")
+        
+        if model in t2v_models and not has_prompt:
             raise ValueError(f"Model {model} requires a text prompt. Please provide a description in the 'prompt' field.")
 
         # Validate MiniMax-Hailuo-02 specific requirements
@@ -81,25 +101,27 @@ class MiniMaxVideoGeneration:
             if duration_int == 10 and resolution == "1080P":
                 raise ValueError("MiniMax-Hailuo-02 model does not support 10s duration with 1080P resolution. Please use 512P or 768P for 10s duration or 6s for 1080P.")
             
-            # Check 512P resolution requirements
-            if resolution == "512P" and first_frame_image is None:
-                raise ValueError("MiniMax-Hailuo-02 model with 512P resolution requires a first frame image. Please connect an image to the 'first_frame_image' input.")
-            
-            # Check last_frame_image with 512P
-            if resolution == "512P" and last_frame_image is not None:
-                raise ValueError("MiniMax-Hailuo-02 model does not support last_frame_image with 512P resolution. Please use 768P or 1080P resolution.")
+            # For MiniMax-Hailuo-02, 512P resolution has special requirements
+            if resolution == "512P":
+                # 512P doesn't require first_frame_image for text-to-video mode
+                if video_mode == "image-to-video" and not has_first_frame:
+                    raise ValueError("MiniMax-Hailuo-02 model with 512P resolution in image-to-video mode requires a first frame image.")
+                
+                # 512P doesn't support last_frame_image
+                if has_last_frame:
+                    raise ValueError("MiniMax-Hailuo-02 model does not support last_frame_image with 512P resolution. Please use 768P or 1080P resolution.")
         
         # Validate last_frame_image is only used with MiniMax-Hailuo-02
-        if last_frame_image is not None and model not in hailuo_models:
+        if has_last_frame and model not in hailuo_models:
             raise ValueError(f"last_frame_image is only supported by MiniMax-Hailuo-02 model, but current model is {model}.")
         
         # Validate duration for 01 series models
         if model not in hailuo_models and duration != "6":
-            print(f"Warning: Duration parameter is not applicable to {model}. Using default 6s duration.")
+            print(f"⚠️ Warning: Duration parameter is not applicable to {model}. Using default 6s duration.")
             
         # Validate resolution for 01 series models
         if model not in hailuo_models and resolution != "768P":
-            print(f"Warning: Resolution parameter is not applicable to {model}. 01 series models use fixed 720P resolution.")
+            print(f"⚠️ Warning: Resolution parameter is not applicable to {model}. 01 series models use fixed 720P resolution.")
 
         try:
             # Prepare API request
