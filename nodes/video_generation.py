@@ -29,16 +29,19 @@ class MiniMaxVideoGeneration:
                 "prompt_optimizer": ("BOOLEAN", {"default": True}),
             },
             "optional": {
-                "image": ("IMAGE", {
-                    "tooltip": "Required for I2V models (I2V-01-Director, I2V-01, I2V-01-live). Optional for MiniMax-Hailuo-02 and other models."
+                "first_frame_image": ("IMAGE", {
+                    "tooltip": "Required for I2V models (I2V-01-Director, I2V-01, I2V-01-live) and MiniMax-Hailuo-02 with 512P resolution. Optional for other cases."
+                }),
+                "last_frame_image": ("IMAGE", {
+                    "tooltip": "Only supported by MiniMax-Hailuo-02 model. Model will generate video ending with this frame. Not supported with 512P resolution."
                 }),
                 "duration": (["6", "10"], {
                     "default": "6",
-                    "tooltip": "Video duration in seconds. 01 series: only 6s. MiniMax-Hailuo-02: 6s or 10s (10s only available for 768P resolution)."
+                    "tooltip": "Video duration in seconds. 01 series: only 6s. MiniMax-Hailuo-02: 6s or 10s (10s only available for 512P and 768P resolution)."
                 }),
-                "resolution": (["768P", "1080P"], {
+                "resolution": (["512P", "768P", "1080P"], {
                     "default": "768P", 
-                    "tooltip": "Video resolution. Only applicable to MiniMax-Hailuo-02 model. 01 series uses fixed resolution."
+                    "tooltip": "Video resolution. Only applicable to MiniMax-Hailuo-02 model. 01 series uses fixed 720P resolution."
                 }),
                 "callback_url": ("STRING", {
                     "multiline": False, 
@@ -53,7 +56,7 @@ class MiniMaxVideoGeneration:
     FUNCTION = "generate_video"
     CATEGORY = "JM-MiniMax-API/Video"
 
-    def generate_video(self, api_key, model, prompt, prompt_optimizer, image=None, duration="6", resolution="768P", callback_url=""):
+    def generate_video(self, api_key, model, prompt, prompt_optimizer, first_frame_image=None, last_frame_image=None, duration="6", resolution="768P", callback_url=""):
         if not api_key:
             raise ValueError("API Key must be provided")
 
@@ -64,21 +67,39 @@ class MiniMaxVideoGeneration:
         hailuo_models = ["MiniMax-Hailuo-02"]
         
         # Validate model-specific requirements
-        if model in i2v_models and image is None:
-            raise ValueError(f"Model {model} requires an image input. Please connect an image to the 'image' input.")
+        if model in i2v_models and first_frame_image is None:
+            raise ValueError(f"Model {model} requires a first frame image input. Please connect an image to the 'first_frame_image' input.")
         
         if model in t2v_models and not prompt.strip():
             raise ValueError(f"Model {model} requires a text prompt. Please provide a description in the 'prompt' field.")
 
-        # Validate duration and resolution combinations for MiniMax-Hailuo-02
+        # Validate MiniMax-Hailuo-02 specific requirements
         if model in hailuo_models:
             duration_int = int(duration)
+            
+            # Check duration and resolution combinations
             if duration_int == 10 and resolution == "1080P":
-                raise ValueError("MiniMax-Hailuo-02 model does not support 10s duration with 1080P resolution. Please use 768P for 10s duration or 6s for 1080P.")
+                raise ValueError("MiniMax-Hailuo-02 model does not support 10s duration with 1080P resolution. Please use 512P or 768P for 10s duration or 6s for 1080P.")
+            
+            # Check 512P resolution requirements
+            if resolution == "512P" and first_frame_image is None:
+                raise ValueError("MiniMax-Hailuo-02 model with 512P resolution requires a first frame image. Please connect an image to the 'first_frame_image' input.")
+            
+            # Check last_frame_image with 512P
+            if resolution == "512P" and last_frame_image is not None:
+                raise ValueError("MiniMax-Hailuo-02 model does not support last_frame_image with 512P resolution. Please use 768P or 1080P resolution.")
+        
+        # Validate last_frame_image is only used with MiniMax-Hailuo-02
+        if last_frame_image is not None and model not in hailuo_models:
+            raise ValueError(f"last_frame_image is only supported by MiniMax-Hailuo-02 model, but current model is {model}.")
         
         # Validate duration for 01 series models
         if model not in hailuo_models and duration != "6":
             print(f"Warning: Duration parameter is not applicable to {model}. Using default 6s duration.")
+            
+        # Validate resolution for 01 series models
+        if model not in hailuo_models and resolution != "768P":
+            print(f"Warning: Resolution parameter is not applicable to {model}. 01 series models use fixed 720P resolution.")
 
         try:
             # Prepare API request
@@ -99,24 +120,24 @@ class MiniMaxVideoGeneration:
                 payload["duration"] = int(duration)
                 payload["resolution"] = resolution
             
-            # Handle image input for I2V models and MiniMax-Hailuo-02
-            if (model in i2v_models and image is not None) or (model in hailuo_models and image is not None):
+            # Helper function to convert ComfyUI image to base64
+            def convert_image_to_base64(image_tensor, image_name):
                 # Convert ComfyUI image tensor to PIL Image
-                if len(image.shape) == 4:  # Batch dimension
+                if len(image_tensor.shape) == 4:  # Batch dimension
                     # Take the first image from batch
-                    image_tensor = image[0]
+                    tensor = image_tensor[0]
                 else:
-                    image_tensor = image
+                    tensor = image_tensor
                 
                 # Convert from tensor format (H, W, C) with values 0-1 to PIL Image
                 import torch
                 import numpy as np
                 
                 # Convert tensor to numpy array and scale to 0-255
-                if isinstance(image_tensor, torch.Tensor):
-                    image_np = image_tensor.cpu().numpy()
+                if isinstance(tensor, torch.Tensor):
+                    image_np = tensor.cpu().numpy()
                 else:
-                    image_np = image_tensor
+                    image_np = tensor
                     
                 # Ensure values are in range 0-1, then scale to 0-255
                 image_np = np.clip(image_np, 0, 1)
@@ -130,11 +151,11 @@ class MiniMaxVideoGeneration:
                 aspect_ratio = width / height
                 
                 if aspect_ratio <= 2/5 or aspect_ratio >= 5/2:
-                    raise ValueError(f"Image aspect ratio ({aspect_ratio:.2f}) must be between 2:5 and 5:2")
+                    raise ValueError(f"{image_name} aspect ratio ({aspect_ratio:.2f}) must be between 2:5 and 5:2")
                 
                 min_dimension = min(width, height)
                 if min_dimension < 300:
-                    raise ValueError(f"Image short side ({min_dimension}px) must be at least 300px")
+                    raise ValueError(f"{image_name} short side ({min_dimension}px) must be at least 300px")
                 
                 # Convert PIL Image to base64
                 import io
@@ -151,16 +172,23 @@ class MiniMaxVideoGeneration:
                 # Check file size (should be < 20MB)
                 file_size = buffer.getbuffer().nbytes
                 if file_size > 20 * 1024 * 1024:  # 20MB
-                    raise ValueError(f"Image file size ({file_size/1024/1024:.1f}MB) exceeds 20MB limit")
+                    raise ValueError(f"{image_name} file size ({file_size/1024/1024:.1f}MB) exceeds 20MB limit")
                 
                 # Convert to base64
                 image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
                 
-                # Add image to payload
-                payload["first_frame_image"] = f"data:image/jpeg;base64,{image_base64}"
+                print(f"{image_name} converted to base64, size: {len(image_base64)} characters")
+                print(f"{image_name} dimensions: {width}x{height}, aspect ratio: {aspect_ratio:.2f}")
                 
-                print(f"Image converted to base64, size: {len(image_base64)} characters")
-                print(f"Image dimensions: {width}x{height}, aspect ratio: {aspect_ratio:.2f}")
+                return f"data:image/jpeg;base64,{image_base64}"
+            
+            # Handle first frame image
+            if first_frame_image is not None:
+                payload["first_frame_image"] = convert_image_to_base64(first_frame_image, "First frame image")
+            
+            # Handle last frame image (only for MiniMax-Hailuo-02)
+            if last_frame_image is not None:
+                payload["last_frame_image"] = convert_image_to_base64(last_frame_image, "Last frame image")
             
             # Add optional callback URL if provided
             if callback_url.strip():
@@ -173,6 +201,10 @@ class MiniMaxVideoGeneration:
             if model in hailuo_models:
                 print(f"Duration: {duration}s")
                 print(f"Resolution: {resolution}")
+            if first_frame_image is not None:
+                print(f"First frame image: provided")
+            if last_frame_image is not None:
+                print(f"Last frame image: provided")
             if callback_url:
                 print(f"Callback URL: {callback_url}")
             
