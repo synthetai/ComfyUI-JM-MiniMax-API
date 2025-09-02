@@ -20,7 +20,7 @@ class TextToSpeech:
                 "api_key": ("STRING", {"multiline": False}),
                 "group_id": ("STRING", {"multiline": False}),
                 "text": ("STRING", {"multiline": True}),
-                "model": (["speech-02-hd", "speech-02-turbo", "speech-01-hd", "speech-01-turbo"], {"default": "speech-02-hd"}),
+                "model": (["speech-2.5-hd-preview", "speech-02-hd", "speech-02-turbo", "speech-01-hd", "speech-01-turbo"], {"default": "speech-2.5-hd-preview"}),
                 "voice_id": ("STRING", {
                     "multiline": False, 
                     "default": "", 
