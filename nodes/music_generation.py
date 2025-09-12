@@ -11,7 +11,7 @@ class MusicGeneration:
     Generates music based on prompt description and lyrics using MiniMax API
     """
     def __init__(self):
-        self.api_base = "https://api.minimaxi.com/v1/music_generation"
+        self.api_base = "https://api.minimax.io/v1/music_generation"
         
     @classmethod
     def INPUT_TYPES(cls):
@@ -115,6 +115,7 @@ class MusicGeneration:
             print(f"⚙️ Audio settings: {audio_setting}")
             print(f"📤 Output format: {output_format}")
             
+            print(f"🌐 API URL: {self.api_base}")
             response = requests.post(self.api_base, headers=headers, json=payload)
             print(f"Response status code: {response.status_code}")
             
