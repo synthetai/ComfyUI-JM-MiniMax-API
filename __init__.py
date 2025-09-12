@@ -5,6 +5,7 @@ from .nodes.load_audio import JM_LoadAudio
 from .nodes.video_generation import MiniMaxVideoGeneration
 from .nodes.check_video_status import CheckVideoStatus
 from .nodes.download_video import DownloadVideo
+from .nodes.music_generation import MusicGeneration
 
 NODE_CLASS_MAPPINGS = {
     "JM-MiniMax-API/text-to-speech": TextToSpeech,
@@ -13,7 +14,8 @@ NODE_CLASS_MAPPINGS = {
     "JM-MiniMax-API/load-audio": JM_LoadAudio,
     "JM-MiniMax-API/video-generation": MiniMaxVideoGeneration,
     "JM-MiniMax-API/check-video-status": CheckVideoStatus,
-    "JM-MiniMax-API/download-video": DownloadVideo
+    "JM-MiniMax-API/download-video": DownloadVideo,
+    "JM-MiniMax-API/music-generation": MusicGeneration
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -23,7 +25,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "JM-MiniMax-API/load-audio": "Load Audio",
     "JM-MiniMax-API/video-generation": "MiniMax Video Generation",
     "JM-MiniMax-API/check-video-status": "Check Video Status",
-    "JM-MiniMax-API/download-video": "Download Video"
+    "JM-MiniMax-API/download-video": "Download Video",
+    "JM-MiniMax-API/music-generation": "MiniMax Music Generation"
 }
 
 # Tell ComfyUI where to find web extensions
